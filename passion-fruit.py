@@ -1,4 +1,5 @@
 import pygame
+import random
 
 pygame.init()
 
@@ -53,8 +54,10 @@ def game_loop():
     cowboy_x, cowboy_y = cowboy_init_x, cowboy_init_y
     cactus_init_x, cactus_init_y = DISPLAY_WIDTH * 0.8, DISPLAY_HEIGHT * 0.3
     cactus_x, cactus_y = cactus_init_x, cactus_init_y
+    needle_x, needle_y = cactus_init_x, cactus_init_y
 
     cowboy_speed = 8
+    needle_speed = 12
 
     cowboy_x_change, cowboy_y_change = 0, 0
     box_width, box_height = cowboy_width * 4, cowboy_height * 4
@@ -66,16 +69,22 @@ def game_loop():
     player_hp, player_atk = 23, 1
     cactus_hp, cactus_atk = 10, 2
 
+    FPS = 30
+    cooldown = 30 * 0.5
+    invuln_time = cooldown
+    damaged = False
+
     while not game_exit:
         gameDisplay.fill(BLACK)
 
         player_hitbox = pygame.Rect(cowboy_x, cowboy_y, cowboy_width - 15, cowboy_height)
         cactus_hitbox = pygame.Rect(cactus_x, cactus_y, cactus_width, cactus_height)
-        # needle_hitbox = pygame.Rect(needle_x, needle_y, needle_width, needle_height)
+        needle_hitbox = pygame.Rect(needle_x, needle_y, needle_width, needle_height)
+
         if debug:
             pygame.draw.rect(gameDisplay, WHITE, player_hitbox, 2)
             pygame.draw.rect(gameDisplay, WHITE, cactus_hitbox, 2)
-            # pygame.draw.rect(gameDisplay, BLACK, needle_hitbox, 2)
+            pygame.draw.rect(gameDisplay, WHITE, needle_hitbox, 2)
 
         # define conditions for having game won or lost
         if player_hp <= 0 and not game_won:
@@ -89,6 +98,7 @@ def game_loop():
             if event.type == pygame.QUIT:
                 game_exit = True
 
+            # movement based on keys being pressed
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     cowboy_x_change += -cowboy_speed
@@ -99,6 +109,7 @@ def game_loop():
                 if event.key == pygame.K_DOWN:
                     cowboy_y_change += cowboy_speed
 
+            # movement negated when keys are lifted
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
                     cowboy_x_change += cowboy_speed
@@ -114,6 +125,11 @@ def game_loop():
                 mouse_x, mouse_y = event.pos
                 if cactus_hitbox.collidepoint(mouse_x, mouse_y):
                     cactus_hp -= player_atk
+                if needle_hitbox.collidepoint(mouse_x, mouse_y):
+                    # ideally the needle object would be temporarily disabled, for now it just moves out of bounds
+                    needle_y = -100
+                    clock.tick(17)
+                    needle_x = cactus_init_x
 
         # set up cowboy and movement
         cowboy(cowboy_x, cowboy_y)
@@ -150,9 +166,27 @@ def game_loop():
         else:
             crosshair(pygame.mouse.get_pos()[0] - center_bal, pygame.mouse.get_pos()[1] - center_bal)
 
+        # generate horizontal needle fire attack
+        needle(needle_x, needle_y)
+        needle_x -= needle_speed
+        if needle_x <= 0:
+            needle_x = cactus_init_x
+            needle_y = cactus_init_y + random.randint(-125, 75)
+        if player_hitbox.colliderect(needle_hitbox) and not damaged:
+            player_hp -= cactus_atk
+            damaged = True
+
+        # set up invulnerability period after taking damage
+        if damaged:
+            if invuln_time > 0:
+                invuln_time -= 1
+            if invuln_time <= 0:
+                damaged = False
+                invuln_time = cooldown
+
         # update entire display at a tick rate (FPS)
         pygame.display.update()
-        clock.tick(30)
+        clock.tick(FPS)
 
 
 game_loop()
