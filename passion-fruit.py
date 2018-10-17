@@ -30,6 +30,13 @@ hp_bar = display('images/hp_bar.png')
 enemy_bar = display('images/enemy_bar.png')
 needle = display('images/needle.png')
 
+
+# function for displaying text on screen
+def message_display(text, x_pos, y_pos, font_size):
+    font = pygame.font.SysFont('Georgia', font_size)
+    gameDisplay.blit(font.render(text, True, WHITE), (x_pos, y_pos))
+
+
 # set up window display, window text, and in-game clock
 gameDisplay = pygame.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
 pygame.display.set_caption('Passion Fruit')
@@ -38,6 +45,10 @@ clock = pygame.time.Clock()
 
 def game_loop():
     game_exit = False
+    game_won = False
+    game_over = False
+    debug = False
+
     cowboy_init_x, cowboy_init_y = DISPLAY_WIDTH * 0.2, DISPLAY_HEIGHT * 0.2
     cowboy_x, cowboy_y = cowboy_init_x, cowboy_init_y
     cactus_init_x, cactus_init_y = DISPLAY_WIDTH * 0.8, DISPLAY_HEIGHT * 0.3
@@ -52,11 +63,27 @@ def game_loop():
     bar_x, bar_y = 5, DISPLAY_HEIGHT - 100
     enemy_bar_x, enemy_bar_y = bar_x, bar_y - 70
     bar_width = 30
-    player_hp, player_atk = 23, 3
-    cactus_hp, cactus_atk = 50, 2
+    player_hp, player_atk = 23, 1
+    cactus_hp, cactus_atk = 10, 2
 
     while not game_exit:
         gameDisplay.fill(BLACK)
+
+        player_hitbox = pygame.Rect(cowboy_x, cowboy_y, cowboy_width - 15, cowboy_height)
+        cactus_hitbox = pygame.Rect(cactus_x, cactus_y, cactus_width, cactus_height)
+        # needle_hitbox = pygame.Rect(needle_x, needle_y, needle_width, needle_height)
+        if debug:
+            pygame.draw.rect(gameDisplay, WHITE, player_hitbox, 2)
+            pygame.draw.rect(gameDisplay, WHITE, cactus_hitbox, 2)
+            # pygame.draw.rect(gameDisplay, BLACK, needle_hitbox, 2)
+
+        # define conditions for having game won or lost
+        if player_hp <= 0 and not game_won:
+            game_over = True
+            message_display("GAME OVER!", DISPLAY_WIDTH / 2, 50, 70)
+        if cactus_hp <= 0 and not game_over:
+            game_won = True
+            message_display("YOU WIN!", DISPLAY_WIDTH / 2, 50, 70)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -82,6 +109,12 @@ def game_loop():
                 if event.key == pygame.K_DOWN:
                     cowboy_y_change += -cowboy_speed
 
+            # event for firing at cactus: deals damage equal to player_atk
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = event.pos
+                if cactus_hitbox.collidepoint(mouse_x, mouse_y):
+                    cactus_hp -= player_atk
+
         # set up cowboy and movement
         cowboy(cowboy_x, cowboy_y)
         cowboy_x += cowboy_x_change
@@ -106,15 +139,9 @@ def game_loop():
 
         # display player HP and cactus HP bars
         for num in range(player_hp):
-            if player_hp > 25:
-                hp_bar(((DISPLAY_WIDTH - bar_width * 2)/player_hp)*num + bar_x, bar_y)
-            else:
-                hp_bar(bar_x + 30 * num, bar_y)
+            hp_bar(bar_x + bar_width * num, bar_y)
         for num in range(cactus_hp):
-            if cactus_hp > 25:
-                enemy_bar(((DISPLAY_WIDTH - bar_width * 2)/cactus_hp)*num + enemy_bar_x, enemy_bar_y)
-            else:
-                enemy_bar(enemy_bar_x + 30 * num, enemy_bar_y)
+            enemy_bar(enemy_bar_x + 7 * num, enemy_bar_y)
 
         # maintain a cross-hair sprite on the player's cursor that fires when mouse1 is pressed
         center_bal = 96/2
